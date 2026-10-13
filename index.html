@@ -229,7 +229,7 @@ td.crit{font-size:.62rem;color:var(--muted);white-space:nowrap}
   <div class="me-kpis" id="me-kpis"></div>
   <div class="me-grid">
     <div class="chart-card"><h3>Matriz de clasificación</h3><div class="me-matrix" id="me-matrix"></div><div class="me-params" id="me-params"></div></div>
-    <div class="chart-card"><h3>Popularidad vs. margen unitario</h3><div class="me-scatter"><canvas id="meChart"></canvas></div></div>
+    <div class="chart-card"><h3 id="me-chart-t">Matriz de Ingeniería de Menú</h3><div class="me-scatter"><canvas id="meChart"></canvas></div></div>
   </div>
   <div id="me-segs"></div>
   <div id="me-alert"></div>
@@ -397,16 +397,20 @@ function renderME(){
     return `<div class="me-q ${k[2]}${meCls===c?' sel':''}" onclick="meSetCls('${c}')"><div class="ax">${k[3]}</div><div class="nm" style="color:${k[1]}">${c}</div><div class="nums"><div><b>${L.length}</b>productos</div><div><b>${pc(MT?m/MT:0)}</b>del margen</div></div><div class="ac">${k[4]}</div></div>`}).join('');
   document.getElementById('me-params').innerHTML=seg?`<span>Segmentación: <b>${fmtN(nG)} subcategorías</b> (restaurante · subcategoría)</span><span>Cada plato se compara contra <b>su</b> subcategoría: umbral = 70% × (100% ÷ productos de la subcategoría) y rentabilidad media ponderada de la subcategoría.</span>`:`<span>Productos: <b>${fmtN(N)}</b></span><span>Regla: <b>70%</b> × (100% ÷ ${fmtN(N)})</span><span>Umbral de popularidad: <b>${(thr*100).toFixed(2)}%</b></span><span>Rentabilidad media (margen unitario ponderado): <b>${fmt(rm)}</b></span>`;
   // scatter
-  const fx=a=>seg?Math.max(a.px,0.01):Math.max(a.part*100,0.001),fy=a=>seg?a.py:a.mu,lx=seg?1:thr*100,ly=seg?1:rm;
-  const ds=Object.keys(CLS).map(c=>({label:c,data:ok.filter(a=>a.cls===c).map(a=>({x:fx(a),y:fy(a),n:ME.productos[a.i][2],r:ME.productos[a.i][0],g:ME.productos[a.i][3],p:a.part,m:a.mu})),backgroundColor:CLS[c][1]+'aa',borderColor:CLS[c][1],pointRadius:3.5,pointHoverRadius:6,datalabels:{display:false}}));
-  const xs=ok.map(fx),ys=ok.map(fy),xmin=Math.min(...xs,lx)*0.8,xmax=Math.max(...xs,lx)*1.2,ymin=Math.min(0,...ys),ymax=Math.max(...ys,ly)*1.05;
-  ds.push({type:'line',label:'Umbral popularidad',data:[{x:lx,y:ymin},{x:lx,y:ymax}],borderColor:'#8b949e',borderDash:[5,4],borderWidth:1,pointRadius:0,datalabels:{display:false}});
-  ds.push({type:'line',label:'Rentabilidad media',data:[{x:xmin,y:ly},{x:xmax,y:ly}],borderColor:'#8b949e',borderDash:[5,4],borderWidth:1,pointRadius:0,datalabels:{display:false}});
+  const idx=seg&&nG>1,g1=Object.values(G)[0]||{thr:0,rm:0},lx=idx?1:(seg?g1.thr:thr)*100,ly=idx?1:(seg?g1.rm:rm);
+  const fx=a=>idx?Math.max(a.px,0.01):a.part*100,fy=a=>idx?a.py:a.mu;
+  const ds=Object.keys(CLS).map(c=>({label:c,data:ok.filter(a=>a.cls===c).map(a=>({x:fx(a),y:fy(a),n:ME.productos[a.i][2],r:ME.productos[a.i][0],g:ME.productos[a.i][3],p:a.part,m:a.mu})),backgroundColor:CLS[c][1]+'cc',borderColor:CLS[c][1],pointRadius:idx?3.5:5,pointHoverRadius:7,datalabels:{display:false}}));
+  const xs=ok.map(fx),ys=ok.map(fy);
+  const xmin=idx?Math.min(...xs,lx)*0.8:0,xmax=idx?Math.max(...xs,lx)*1.2:Math.ceil(Math.max(...xs,lx)*1.08),ymin=Math.min(0,...ys),ymax=Math.max(...ys,ly)*1.08;
+  ds.push({type:'line',label:idx?'Umbral de popularidad (1×)':`Popularidad media (${lx.toFixed(2)}%)`,data:[{x:lx,y:ymin},{x:lx,y:ymax}],borderColor:'#c9d1d9',borderDash:[8,5],borderWidth:1.5,pointRadius:0,datalabels:{display:false}});
+  ds.push({type:'line',label:idx?'Rentabilidad media (1×)':`Rentabilidad media (${fmt(ly)})`,data:[{x:xmin,y:ly},{x:xmax,y:ly}],borderColor:'#8b949e',borderDash:[14,6],borderWidth:1.5,pointRadius:0,datalabels:{display:false}});
   if(meChart)meChart.destroy();
   if(ok.length)meChart=new Chart(document.getElementById('meChart'),{type:'scatter',data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{position:'bottom',labels:{color:'#8b949e',font:{size:9},boxWidth:10,filter:i=>!!CLS[i.text]}},tooltip:{filter:i=>!!CLS[i.dataset.label],callbacks:{label:c=>`${c.raw.n} (${c.raw.r} · ${c.raw.g}) · Pop ${(c.raw.p*100).toFixed(2)}% · Margen ${fmt(c.raw.m)}`}}},
-    scales:{x:{type:'logarithmic',min:xmin,max:xmax,title:{display:true,text:seg?'Popularidad vs. umbral de su subcategoría (1 = umbral, escala log)':'Popularidad (% de unidades, escala log)',color:'#8b949e',font:{size:9}},ticks:{color:'#8b949e',font:{size:8},callback:v=>{const l=Math.log10(v);return Math.abs(l-Math.round(l))<1e-9?(seg?v+'×':v+'%'):''}},grid:{color:'#21262d'}},
-            y:{min:ymin,max:ymax,title:{display:true,text:seg?'Margen unitario vs. media de su subcategoría (1 = media)':'Margen unitario',color:'#8b949e',font:{size:9}},ticks:{color:'#8b949e',font:{size:8},callback:v=>seg?v.toFixed(1)+'×':fmtS(v)},grid:{color:'#21262d'}}}}});
+    plugins:{legend:{position:'bottom',labels:{color:'#8b949e',font:{size:9},boxWidth:12}},tooltip:{filter:i=>!!CLS[i.dataset.label],callbacks:{label:c=>`${c.raw.n} (${c.raw.r} · ${c.raw.g}) · Pop ${(c.raw.p*100).toFixed(2)}% · Margen ${fmt(c.raw.m)}`}}},
+    scales:{x:{type:idx?'logarithmic':'linear',min:xmin,max:xmax,title:{display:true,text:idx?'Popularidad vs. umbral de su subcategoría (1× = umbral, escala log)':'Índice de popularidad (%)',color:'#8b949e',font:{size:10}},
+              ticks:{color:'#8b949e',font:{size:9},callback:v=>{if(!idx)return Math.round(v*10)/10+'%';const l=Math.log10(v);return Math.abs(l-Math.round(l))<1e-9?v+'×':''}},grid:{color:'#21262d'}},
+            y:{min:ymin,max:ymax,title:{display:true,text:idx?'Rentabilidad vs. media de su subcategoría (1× = media)':'Margen unitario ($)',color:'#8b949e',font:{size:10}},ticks:{color:'#8b949e',font:{size:9},callback:v=>idx?v.toFixed(1)+'×':fmtS(v)},grid:{color:'#21262d'}}}}});
+  document.getElementById('me-chart-t').textContent=idx?'Matriz de Ingeniería de Menú · varias subcategorías (índice)':'Matriz de Ingeniería de Menú'+(seg?' · '+g1.g:'');
   // resumen por subcategoría
   const gl=Object.values(G).sort((a,b)=>b.mt-a.mt);
   document.getElementById('me-segs').innerHTML=seg?`<details class="me-alert" style="background:var(--bg3);border-color:var(--border)" open><summary style="color:var(--text)">Resumen por subcategoría (${fmtN(gl.length)}) · umbrales propios de cada una</summary><div class="tbl-wrap" style="max-height:300px;overflow:auto;margin-top:8px"><table><thead><tr><th>Restaurante · Subcategoría</th><th class="r">Productos</th><th class="r">Umbral pop.</th><th class="r">Rent. media</th><th class="r">Margen total</th><th class="r">Estrella</th><th class="r">Popular</th><th class="r">Duro de vender</th><th class="r">Pobre</th></tr></thead><tbody>`+
