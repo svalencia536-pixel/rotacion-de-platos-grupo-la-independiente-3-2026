@@ -141,6 +141,7 @@ tr.row-prod:hover{background:#111520}td.r{text-align:right}
 .me-modal .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 .btn-ok{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:7px;padding:8px 14px;font-weight:700;font-size:.75rem;cursor:pointer}
 .btn-xl{background:var(--green);color:#06210f;border:0;border-radius:7px;padding:8px 14px;font-weight:800;font-size:.75rem;cursor:pointer;white-space:nowrap}.btn-xl:hover{filter:brightness(1.1)}.btn-xl:disabled{opacity:.6;cursor:wait}
+.me-ptiles{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:10px}.me-pt{background:var(--bg2);border:1px solid var(--border);border-radius:7px;overflow:hidden;text-align:center}.me-pt .h{background:#1f6feb;color:#fff;font-size:.58rem;font-weight:700;padding:5px 4px}.me-pt .v{font-size:1rem;font-weight:800;color:#58a6ff;padding:7px 4px}@media(min-width:640px){.me-ptiles{grid-template-columns:repeat(5,1fr)}}
 .me-search{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:7px;font-size:.75rem;width:100%}
 td.crit{font-size:.62rem;color:var(--muted);white-space:nowrap}
 @media(min-width:640px){.me-kpis{grid-template-columns:repeat(5,1fr)}.me-grid{grid-template-columns:1fr 1fr}.me-scatter{height:340px}}
@@ -395,7 +396,9 @@ function renderME(){
   const order=['DURO DE VENDER','ESTRELLA','POBRE','POPULAR'];
   document.getElementById('me-matrix').innerHTML=order.map(c=>{const L=ok.filter(a=>a.cls===c),m=L.reduce((s,a)=>s+a.mt,0),k=CLS[c];
     return `<div class="me-q ${k[2]}${meCls===c?' sel':''}" onclick="meSetCls('${c}')"><div class="ax">${k[3]}</div><div class="nm" style="color:${k[1]}">${c}</div><div class="nums"><div><b>${L.length}</b>productos</div><div><b>${pc(MT?m/MT:0)}</b>del margen</div></div><div class="ac">${k[4]}</div></div>`}).join('');
-  document.getElementById('me-params').innerHTML=seg?`<span>Segmentación: <b>${fmtN(nG)} subcategorías</b> (restaurante · subcategoría)</span><span>Cada plato se compara contra <b>su</b> subcategoría: umbral = 70% × (100% ÷ productos de la subcategoría) y rentabilidad media ponderada de la subcategoría.</span>`:`<span>Productos: <b>${fmtN(N)}</b></span><span>Regla: <b>70%</b> × (100% ÷ ${fmtN(N)})</span><span>Umbral de popularidad: <b>${(thr*100).toFixed(2)}%</b></span><span>Rentabilidad media (margen unitario ponderado): <b>${fmt(rm)}</b></span>`;
+  const pt=(n,thr,rm)=>`<div class="me-ptiles"><div class="me-pt"><div class="h">Productos en la selección</div><div class="v">${fmtN(n)}</div></div><div class="me-pt"><div class="h">Reparto igual (100% ÷ productos)</div><div class="v">${n?(100/n).toFixed(2):0}%</div></div><div class="me-pt"><div class="h">Regla de ingeniería de menú</div><div class="v">70%</div></div><div class="me-pt"><div class="h">Umbral de popularidad (70% × ${n?(100/n).toFixed(2):0}%)</div><div class="v">${(thr*100).toFixed(2)}%</div></div><div class="me-pt"><div class="h">Rentabilidad promedio (margen unitario)</div><div class="v">${fmt(Math.round(rm))}</div></div></div>`;
+  const g0=Object.values(G)[0];
+  document.getElementById('me-params').innerHTML=(seg&&nG>1)?`<span>Segmentación: <b>${fmtN(nG)} subcategorías</b> (restaurante · subcategoría). Cada plato se compara contra <b>su</b> subcategoría; los parámetros de cada una están en el <b>Resumen por subcategoría</b>. Escoge una subcategoría para ver su matriz.</span>`:(seg?pt(g0.n,g0.thr,g0.rm):pt(N,thr,rm));
   // scatter
   const idx=seg&&nG>1,g1=Object.values(G)[0]||{thr:0,rm:0},lx=idx?1:(seg?g1.thr:thr)*100,ly=idx?1:(seg?g1.rm:rm);
   const fx=a=>idx?Math.max(a.px,0.01):a.part*100,fy=a=>idx?a.py:a.mu;
@@ -413,8 +416,8 @@ function renderME(){
   document.getElementById('me-chart-t').textContent=idx?'Matriz de Ingeniería de Menú · varias subcategorías (índice)':'Matriz de Ingeniería de Menú'+(seg?' · '+g1.g:'');
   // resumen por subcategoría
   const gl=Object.values(G).sort((a,b)=>b.mt-a.mt);
-  document.getElementById('me-segs').innerHTML=seg?`<details class="me-alert" style="background:var(--bg3);border-color:var(--border)" open><summary style="color:var(--text)">Resumen por subcategoría (${fmtN(gl.length)}) · umbrales propios de cada una</summary><div class="tbl-wrap" style="max-height:300px;overflow:auto;margin-top:8px"><table><thead><tr><th>Restaurante · Subcategoría</th><th class="r">Productos</th><th class="r">Umbral pop.</th><th class="r">Rent. media</th><th class="r">Margen total</th><th class="r">Estrella</th><th class="r">Popular</th><th class="r">Duro de vender</th><th class="r">Pobre</th></tr></thead><tbody>`+
-    gl.map(g=>`<tr style="cursor:pointer" onclick="meGoSub('${g.g.split(' · ').slice(1).join(' · ').replace(/'/g,"\\'")}')"><td style="font-weight:600;color:var(--text)">${g.g}</td><td class="r">${g.n}</td><td class="r">${(g.thr*100).toFixed(1)}%</td><td class="r">${fmt(g.rm)}</td><td class="r">${fmt(g.mt)}</td><td class="r" style="color:#86efac">${g.c['ESTRELLA']||0}</td><td class="r" style="color:#93c5fd">${g.c['POPULAR']||0}</td><td class="r" style="color:#fcd34d">${g.c['DURO DE VENDER']||0}</td><td class="r" style="color:#fca5a5">${g.c['POBRE']||0}</td></tr>`).join('')+'</tbody></table></div></details>':'';
+  document.getElementById('me-segs').innerHTML=seg?`<details class="me-alert" style="background:var(--bg3);border-color:var(--border)" open><summary style="color:var(--text)">Resumen por subcategoría (${fmtN(gl.length)}) · umbrales propios de cada una</summary><div class="tbl-wrap" style="max-height:300px;overflow:auto;margin-top:8px"><table><thead><tr><th>Restaurante · Subcategoría</th><th class="r">Productos</th><th class="r">Reparto igual<br>(100% ÷ productos)</th><th class="r">Regla</th><th class="r">Umbral popularidad<br>(70% × reparto)</th><th class="r">Rentabilidad promedio<br>(margen unitario)</th><th class="r">Margen total</th><th class="r">Estrella</th><th class="r">Popular</th><th class="r">Duro de vender</th><th class="r">Pobre</th></tr></thead><tbody>`+
+    gl.map(g=>`<tr style="cursor:pointer" onclick="meGoSub('${g.g.split(' · ').slice(1).join(' · ').replace(/'/g,"\\'")}')"><td style="font-weight:600;color:var(--text)">${g.g}</td><td class="r">${g.n}</td><td class="r">${(100/g.n).toFixed(2)}%</td><td class="r">70%</td><td class="r" style="font-weight:700">${(g.thr*100).toFixed(2)}%</td><td class="r" style="font-weight:700">${fmt(g.rm)}</td><td class="r">${fmt(g.mt)}</td><td class="r" style="color:#86efac">${g.c['ESTRELLA']||0}</td><td class="r" style="color:#93c5fd">${g.c['POPULAR']||0}</td><td class="r" style="color:#fcd34d">${g.c['DURO DE VENDER']||0}</td><td class="r" style="color:#fca5a5">${g.c['POBRE']||0}</td></tr>`).join('')+'</tbody></table></div></details>':'';
   // alertas
   if(exc.length){const g={'SIN FICHA':[],'SIN COSTO':[],'COSTO ATIPICO':[]};exc.forEach(a=>g[ME.productos[a.i][6]].push(a));
     const lab={'SIN FICHA':'Sin ficha técnica (eventos, servicios, productos sin receta)','SIN COSTO':'Ficha con costo en cero','COSTO ATIPICO':'Costo atípico (más de 3 veces el precio de venta: revisar unidades de la ficha)'};
@@ -523,22 +526,23 @@ async function meBuildXL(){
   const D="Detalle!";
   // ---------------- POR SUBCATEGORÍA ----------------
   const sb=wb.getWorksheet('Por subcategoría');
-  const sc=['Restaurante · Subcategoría','Productos','Unidades','Umbral popularidad','Rentabilidad media','Margen total','Estrella','Popular','Duro de vender','Pobre'];
+  const sc=['Restaurante · Subcategoría','Productos','Unidades','Reparto igual (100% ÷ productos)','Regla de ingeniería de menú','Umbral de popularidad (regla × reparto)','Rentabilidad promedio (margen unitario)','Margen total','Estrella','Popular','Duro de vender','Pobre'];
   band(sb,1,1,sc.length,'RESUMEN POR SUBCATEGORÍA · umbrales propios de cada una',{size:12,ht:26});head(sb,3,sc);
-  sb.columns=[40,11,11,13,15,17,10,10,14,10].map(w=>({width:w}));
+  sb.columns=[40,11,11,14,13,16,17,17,10,10,14,10].map(w=>({width:w}));
   const segs=Object.keys(gStat).sort((a,b)=>gStat[b].mt-gStat[a].mt);
   segs.forEach((k,ix)=>{const r=4+ix,g=gStat[k],row=sb.getRow(r),cnt={};rows.forEach(a=>{if(sg[a.i].k===k)cnt[sg[a.i].cls]=(cnt[sg[a.i].cls]||0)+1});
     row.getCell(1).value=k;body(row.getCell(1),{bold:true});
     const f=(col,formula,result,fmt,o)=>{const c=row.getCell(col);c.value={formula,result};body(c,Object.assign({fmt},o||{}))};
-    f(2,`COUNTIF(${D}${R('F')},A${r})`,g.n,'#,##0');f(3,`SUMIF(${D}${R('F')},A${r},${D}${R('G')})`,g.u,'#,##0');f(4,`IFERROR(0.7/B${r},0)`,0.7/g.n,'0.0%');
-    f(6,`SUMIF(${D}${R('F')},A${r},${D}${R('L')})`,g.mt,money,{bold:true});f(5,`IFERROR(F${r}/C${r},0)`,g.u?g.mt/g.u:0,money);
-    ['ESTRELLA','POPULAR','DURO DE VENDER','POBRE'].forEach((c,j)=>{f(7+j,`COUNTIFS(${D}${R('F')},$A${r},${D}${R('T')},"${c}")`,cnt[c]||0,'#,##0',{color:CL[c][0],bold:true});row.getCell(7+j).alignment={horizontal:'center'}});
-    if(ix%2)for(let j=1;j<=10;j++)row.getCell(j).fill=fill('FFF6F8FA');
+    f(2,`COUNTIF(${D}${R('F')},A${r})`,g.n,'#,##0');f(3,`SUMIF(${D}${R('F')},A${r},${D}${R('G')})`,g.u,'#,##0');f(4,`IFERROR(1/B${r},0)`,1/g.n,'0.00%');
+    {const c=row.getCell(5);c.value=0.7;body(c,{fmt:'0%'})}f(6,`E${r}*D${r}`,0.7/g.n,'0.00%',{bold:true});
+    f(8,`SUMIF(${D}${R('F')},A${r},${D}${R('L')})`,g.mt,money,{bold:true});f(7,`IFERROR(H${r}/C${r},0)`,g.u?g.mt/g.u:0,money,{bold:true});
+    ['ESTRELLA','POPULAR','DURO DE VENDER','POBRE'].forEach((c,j)=>{f(9+j,`COUNTIFS(${D}${R('F')},$A${r},${D}${R('T')},"${c}")`,cnt[c]||0,'#,##0',{color:CL[c][0],bold:true});row.getCell(9+j).alignment={horizontal:'center'}});
+    if(ix%2)for(let j=1;j<=12;j++)row.getCell(j).fill=fill('FFF6F8FA');
   });
   const rt=4+segs.length,tr=sb.getRow(rt);tr.getCell(1).value='TOTAL';
-  const tot={2:rows.length,3:L.U,6:L.MT};['ESTRELLA','POPULAR','DURO DE VENDER','POBRE'].forEach((c,j)=>tot[7+j]=rows.filter(a=>sg[a.i].cls===c).length);
-  [2,3,6,7,8,9,10].forEach(j=>{const col=String.fromCharCode(64+j);tr.getCell(j).value={formula:`SUM(${col}4:${col}${rt-1})`,result:tot[j]};tr.getCell(j).numFmt=j===6?money:'#,##0'});
-  for(let j=1;j<=10;j++){const c=tr.getCell(j);c.font={name:F,bold:true,size:9,color:{argb:C.white}};c.fill=fill(C.navy)}
+  const tot={2:rows.length,3:L.U,8:L.MT};['ESTRELLA','POPULAR','DURO DE VENDER','POBRE'].forEach((c,j)=>tot[9+j]=rows.filter(a=>sg[a.i].cls===c).length);
+  [2,3,8,9,10,11,12].forEach(j=>{const col=String.fromCharCode(64+j);tr.getCell(j).value={formula:`SUM(${col}4:${col}${rt-1})`,result:tot[j]};tr.getCell(j).numFmt=j===8?money:'#,##0'});
+  for(let j=1;j<=12;j++){const c=tr.getCell(j);c.font={name:F,bold:true,size:9,color:{argb:C.white}};c.fill=fill(C.navy)}
   // ---------------- RESUMEN ----------------
   const rs=wb.getWorksheet('Resumen');
   rs.columns=[{width:3},{width:24},{width:22},{width:22},{width:14},{width:64}];
