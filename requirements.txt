@@ -1,0 +1,2 @@
+# Sin dependencias: el servidor usa solo la biblioteca estandar.
+# Este archivo hace que Railway detecte el proyecto como Python.
