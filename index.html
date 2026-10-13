@@ -220,7 +220,6 @@ td.crit{font-size:.62rem;color:var(--muted);white-space:nowrap}
 </div></div>
 <div class="tab-content" id="tab3">
   <div class="table-toolbar" style="margin-bottom:8px"><div><h3>▌ Ingeniería de Menú</h3><p id="me-scope"></p></div><button class="btn-xl" id="meXls" onclick="meExcel()">⬇ Descargar Excel</button></div>
-  <div class="me-sello" id="me-sello"></div>
   <div class="me-toolbar">
     <div class="filter-group"><label>Segmentación</label><select id="meSeg"><option value="sub">Por subcategoría (recomendado)</option><option value="glob">Todo el filtro junto</option></select></div>
     <div class="filter-group"><label>Subcategoría</label><select id="meSub"><option value="">Todas las subcategorías</option></select></div>
@@ -370,8 +369,6 @@ function meSubs(){
 }
 function renderME(){
   meSubs();
-  const fs=meFechas();
-  document.getElementById('me-sello').innerHTML=`<span>🗓</span><div><b>Costo = última actualización de las fichas técnicas.</b> ${fs.map(f=>`${f[0]}: <b>${f[1]}</b>`).join(' · ')}<br><span style="color:var(--muted)">Descarga el Excel cada mes para conservar el histórico con estos costos.</span></div>`;
   const base=meBase(),ok=[],exc=[];
   base.forEach(a=>{const p=ME.productos[a.i];(p[6]==='OK'?ok:exc).push(a)});
   const N=ok.length,U=ok.reduce((s,a)=>s+a.u,0);
