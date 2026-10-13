@@ -1,6 +1,6 @@
 # Dashboard de Ventas · Grupo La Independiente
 
-Aplicación web estática (HTML/CSS/JS, sin backend) con el dashboard de ventas de Grupo La Independiente (enero–junio 2026).
+Aplicación web estática (HTML/CSS/JS, sin backend) con el dashboard de ventas de Grupo La Independiente (enero–septiembre 2026).
 
 ## Desarrollo local
 
